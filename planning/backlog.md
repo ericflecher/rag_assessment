@@ -506,6 +506,236 @@ logging.info(f"Total latency: {time.time() - start_time:.3f}s")
 
 ---
 
+### Feature: UV Package Manager Integration
+
+**Priority:** Low
+**Effort:** Small (~30 minutes)
+**Category:** Developer Experience, Dependency Management
+
+**Description:**
+
+Transition from traditional pip/venv to UV for faster, simpler dependency management. UV is a modern Python package manager written in Rust that provides significantly faster installation and better dependency resolution.
+
+**Benefits:**
+
+- ✅ **10-100x faster** than pip for package installation
+- ✅ **Simpler commands** - single tool for environment and dependencies
+- ✅ **Better dependency resolution** - handles conflicts more intelligently
+- ✅ **Automatic virtual environment management** - no manual venv creation
+- ✅ **Lock file support** - reproducible builds with `uv.lock`
+- ✅ **Drop-in replacement** - compatible with existing pip workflows
+
+**Implementation:**
+
+**1. Install UV:**
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or via Homebrew
+brew install uv
+
+# Or via pip (ironically)
+pip install uv
+```
+
+**2. Create `pyproject.toml`:**
+```toml
+[project]
+name = "rag-assessment"
+version = "0.1.0"
+description = "RAG FAQ Question Answering System"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=1.0.0",
+    "numpy>=1.24.0",
+    "tqdm>=4.65.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+local = [
+    "sentence-transformers>=2.2.0",
+    "ollama>=0.1.0",
+]
+production = [
+    "langchain>=0.1.0",
+    "chromadb>=0.4.0",
+    "sentence-transformers>=2.2.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+```
+
+**3. Update Setup Instructions in README:**
+
+**Old (pip/venv):**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install openai numpy tqdm python-dotenv
+```
+
+**New (UV):**
+```bash
+# Install dependencies and create venv in one command
+uv sync
+
+# Or specify extra groups
+uv sync --extra local  # Install with local model support
+uv sync --extra dev    # Install with dev tools
+```
+
+**4. Running the Application:**
+
+**Old:**
+```bash
+source venv/bin/activate
+python src/rag_assessment_partial.py
+```
+
+**New:**
+```bash
+# UV automatically activates the venv
+uv run python src/rag_assessment_partial.py
+
+# Or with extra dependencies
+uv run --extra local python src/rag_assessment_partial.py
+```
+
+**5. Adding Dependencies:**
+
+**Old:**
+```bash
+pip install new-package
+pip freeze > requirements.txt
+```
+
+**New:**
+```bash
+uv add new-package
+# Automatically updates pyproject.toml and uv.lock
+```
+
+**6. Create `requirements.txt` for Compatibility:**
+
+For users without UV, generate requirements.txt:
+```bash
+uv pip compile pyproject.toml -o requirements.txt
+```
+
+**Migration Steps:**
+
+1. Install UV
+2. Create `pyproject.toml` with current dependencies
+3. Run `uv sync` to create lock file
+4. Update `.gitignore` to include `uv.lock` (or commit it for reproducibility)
+5. Update README.md with new setup instructions
+6. Keep `requirements.txt` for backwards compatibility
+
+**Backwards Compatibility:**
+
+Maintain both workflows:
+
+```markdown
+## Setup
+
+### Option 1: UV (Recommended)
+```bash
+uv sync
+uv run python src/rag_assessment_partial.py
+```
+
+### Option 2: Traditional pip
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python src/rag_assessment_partial.py
+```
+```
+
+**Performance Comparison:**
+
+| Task | pip | UV | Speedup |
+|------|-----|----|----|
+| Install deps (cold) | ~45s | ~2s | 22x |
+| Install deps (cached) | ~15s | ~0.3s | 50x |
+| Dependency resolution | ~10s | ~0.1s | 100x |
+| Virtual env creation | ~3s | Automatic | N/A |
+
+**Project Structure Update:**
+
+```
+rag_assessment/
+├── pyproject.toml           # NEW: Project metadata and dependencies
+├── uv.lock                  # NEW: Lock file for reproducibility
+├── requirements.txt         # Keep for compatibility
+├── .env.template
+├── .gitignore
+├── README.md
+├── faqs/
+├── src/
+│   └── rag_assessment_partial.py
+└── planning/
+```
+
+**Update `.gitignore`:**
+
+```gitignore
+# UV
+.venv/
+uv.lock  # Optional: commit for reproducibility, ignore for flexibility
+
+# OR keep uv.lock in git for reproducible builds
+# (remove uv.lock line from .gitignore)
+```
+
+**Example Commands:**
+
+```bash
+# Initial setup
+uv sync
+
+# Run with different dependency sets
+uv run python src/rag_assessment_partial.py                    # Base deps
+uv run --extra local python src/rag_assessment_partial.py      # With local models
+uv run --extra production python src/rag_assessment_partial.py # With prod features
+
+# Development
+uv add --dev pytest        # Add dev dependency
+uv add numpy --upgrade     # Upgrade specific package
+uv pip list                # List installed packages
+
+# Generate requirements.txt for compatibility
+uv pip compile pyproject.toml -o requirements.txt
+```
+
+**Tradeoffs:**
+
+- ✅ **Much faster** - significant time savings during development
+- ✅ **Simpler workflow** - fewer commands to remember
+- ✅ **Better tooling** - modern approach to Python packaging
+- ⚠️ **New dependency** - users need to install UV first
+- ⚠️ **Less familiar** - not as widely known as pip (yet)
+- ⚠️ **Ecosystem adoption** - still newer, though growing rapidly
+
+**Recommendation:**
+
+Implement UV as the recommended approach while maintaining pip compatibility for maximum accessibility during the interview demo.
+
+**Note:** UV is developed by Astral (creators of Ruff), showing strong backing and future support.
+
+---
+
 ### Feature: Local Model Support (No API Keys Required)
 
 **Priority:** Medium (Bonus points for interview)
