@@ -19,6 +19,10 @@ import json
 from openai import OpenAI
 import numpy as np
 from tqdm import tqdm
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # --- Config ---
 FAQ_DIR = "faqs"
