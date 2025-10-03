@@ -159,6 +159,12 @@ rag_assessment/
     └── backlog.md
 ```
 
+## Documentation
+
+- **[Technical Exercise Requirements](docs/)** - Original assessment guidelines and acceptance criteria
+- **[Implementation Plan](planning/mvp_implementation_plan.md)** - Detailed MVP implementation blueprints
+- **[Feature Backlog](planning/backlog.md)** - Future enhancements and improvements
+
 ## How It Works
 
 ### 1. Text Chunking
