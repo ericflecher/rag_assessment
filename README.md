@@ -16,6 +16,8 @@ A minimal Retrieval-Augmented Generation (RAG) prototype that answers questions 
 
 ## Local FAQ RAG
 
+![Local FAQ RAG](image/README/1759528629088.png "")
+
 ## Architecture
 
 1. **Load & Chunk**: Reads markdown FAQ files and splits into ~200 character chunks
