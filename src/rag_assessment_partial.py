@@ -27,8 +27,8 @@ load_dotenv(override=True)
 
 # --- Config ---
 FAQ_DIR = "faqs"
-EMBED_MODEL = "text-embedding-ada-002"
-LLM_MODEL = "gpt-3.5-turbo"
+EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-ada-002")
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
 CHUNK_SIZE = 200  # characters per chunk
 TOP_K = 4
 

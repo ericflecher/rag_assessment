@@ -51,6 +51,10 @@ cp .env.template .env
 
 # Edit .env and add your OpenAI API key
 # OPENAI_API_KEY=sk-...
+
+# Optional: Customize model configuration
+# EMBED_MODEL=text-embedding-ada-002
+# LLM_MODEL=gpt-3.5-turbo
 ```
 
 ### 5. Verify FAQ Documents
@@ -111,14 +115,27 @@ python src/rag_assessment_partial.py
 
 ## Configuration
 
-Edit `src/rag_assessment_partial.py` to customize:
+### Environment Variables (.env)
+
+Model configuration is managed via `.env` file:
+
+```bash
+# Required
+OPENAI_API_KEY=sk-...
+
+# Optional - Override default models
+EMBED_MODEL=text-embedding-ada-002  # Embedding model
+LLM_MODEL=gpt-3.5-turbo            # LLM for answer generation
+```
+
+### Code Configuration
+
+Edit `src/rag_assessment_partial.py` for additional settings:
 
 ```python
-FAQ_DIR = "faqs"              # FAQ directory path
-EMBED_MODEL = "text-embedding-ada-002"  # Embedding model
-LLM_MODEL = "gpt-3.5-turbo"   # LLM for answer generation
-CHUNK_SIZE = 200              # Characters per chunk
-TOP_K = 4                     # Number of chunks to retrieve
+FAQ_DIR = "faqs"     # FAQ directory path
+CHUNK_SIZE = 200     # Characters per chunk
+TOP_K = 4            # Number of chunks to retrieve
 ```
 
 ## Project Structure
