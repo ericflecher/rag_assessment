@@ -22,7 +22,8 @@ from tqdm import tqdm
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv()
+# Use override=True to ensure .env takes precedence over system environment
+load_dotenv(override=True)
 
 # --- Config ---
 FAQ_DIR = "faqs"
@@ -71,8 +72,14 @@ def embed_texts(texts):
     """
     embeddings = []
     for text in tqdm(texts, desc="Embedding"):
-    # TODO: Call the OpenAI embedding API and append the result as a numpy array
-    pass
+        # Call OpenAI embedding API for each text chunk
+        response = client.embeddings.create(
+            input=[text],
+            model=EMBED_MODEL  # "text-embedding-ada-002"
+        )
+        # Extract embedding and convert to numpy array
+        embedding = np.array(response.data[0].embedding)
+        embeddings.append(embedding)
     return embeddings
 
 def main():
@@ -80,16 +87,23 @@ def main():
     chunks, sources = load_and_chunk_faqs(FAQ_DIR)
 
     # --- 2. Embed Chunks ---
-    # TODO: Embed the chunks using embed_texts
-    chunk_embeddings = []  # Replace with actual embeddings
+    chunk_embeddings = embed_texts(chunks)
 
     # --- 3. Query Loop ---
     query = input("Enter your question: ")
-    # TODO: Embed the query using client.embeddings.create
-    query_emb = None  # Replace with actual query embedding
+    # Embed the query using the same embedding model
+    response = client.embeddings.create(
+        input=[query],
+        model=EMBED_MODEL  # "text-embedding-ada-002"
+    )
+    query_emb = np.array(response.data[0].embedding)
 
     # --- 4. Retrieve Top-k ---
-    # TODO: Compute similarities and get top-k indices
+    # Compute cosine similarity between query and all chunk embeddings
+    sims = np.array([cosine_sim(query_emb, chunk_emb) for chunk_emb in chunk_embeddings])
+
+    # Get indices of top-k most similar chunks
+    # np.argsort gives ascending order, so [-TOP_K:] gets last K (highest), [::-1] reverses
     top_indices = np.argsort(sims)[-TOP_K:][::-1]
     top_chunks = [chunks[i] for i in top_indices]
     top_files = [sources[i] for i in top_indices]
@@ -103,8 +117,13 @@ def main():
         f"Question: {query}\n\n"
         f"Answer (cite sources):"
     )
-    # TODO: Generate answer using client.chat.completions.create
-    answer = ""  # Replace with actual answer
+    # Generate answer using GPT-3.5-turbo
+    response = client.chat.completions.create(
+        model=LLM_MODEL,  # "gpt-3.5-turbo"
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2  # Low temperature for more consistent, factual answers
+    )
+    answer = response.choices[0].message.content.strip()
 
     # --- 6. Output JSON ---
     output = {
