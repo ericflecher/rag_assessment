@@ -1,5 +1,35 @@
 # Project Backlog
 
+## In Progress
+
+### Feature: Local Model Support (No API Keys Required)
+
+**Status:** 🚧 Implementation in progress
+**Priority:** Medium (Bonus points for interview)
+**Effort:** Medium (~3-4 hours)
+**Category:** Cost Optimization, Privacy, Offline Support
+
+**Implementation Plan:** [local_model_implementation_plan.md](./local_model_implementation_plan.md)
+
+**Description:**
+Replace OpenAI API calls with local models to eliminate API key dependency, reduce costs, and enable offline operation. This addresses the bonus points criteria: "If it can run with local models (and doesn't require API keys)".
+
+**Key Features:**
+- Uses `all-MiniLM-L6-v2` (sentence-transformers) for embeddings
+- Uses `llama3.2:3b` (Ollama) for answer generation
+- Configuration toggle via `USE_LOCAL_MODELS` environment variable
+- Maintains compatibility with OpenAI API mode
+- Same JSON output format and source citation requirements
+
+**Benefits:**
+- ✅ No API keys required (bonus points)
+- ✅ Zero API costs
+- ✅ Privacy - data never leaves machine
+- ✅ Offline operation
+- ✅ Faster embeddings than OpenAI API
+
+---
+
 ## Future Enhancements
 
 ### Feature: Multiple Questions Support
@@ -759,428 +789,15 @@ cat logs/chats/chat_*.json | jq '.'
 **Category:** Developer Experience, Dependency Management
 
 **Description:**
-
 Transition from traditional pip/venv to UV for faster, simpler dependency management. UV is a modern Python package manager written in Rust that provides significantly faster installation and better dependency resolution.
 
-**Benefits:**
-
-- ✅ **10-100x faster** than pip for package installation
-- ✅ **Simpler commands** - single tool for environment and dependencies
-- ✅ **Better dependency resolution** - handles conflicts more intelligently
-- ✅ **Automatic virtual environment management** - no manual venv creation
-- ✅ **Lock file support** - reproducible builds with `uv.lock`
-- ✅ **Drop-in replacement** - compatible with existing pip workflows
-
-**Implementation:**
-
-**1. Install UV:**
-```bash
-# macOS/Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Or via Homebrew
-brew install uv
-
-# Or via pip (ironically)
-pip install uv
-```
-
-**2. Create `pyproject.toml`:**
-```toml
-[project]
-name = "rag-assessment"
-version = "0.1.0"
-description = "RAG FAQ Question Answering System"
-readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-    "openai>=1.0.0",
-    "numpy>=1.24.0",
-    "tqdm>=4.65.0",
-    "python-dotenv>=1.0.0",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4.0",
-    "black>=23.0.0",
-    "ruff>=0.1.0",
-]
-local = [
-    "sentence-transformers>=2.2.0",
-    "ollama>=0.1.0",
-]
-production = [
-    "langchain>=0.1.0",
-    "chromadb>=0.4.0",
-    "sentence-transformers>=2.2.0",
-]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-```
-
-**3. Update Setup Instructions in README:**
-
-**Old (pip/venv):**
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install openai numpy tqdm python-dotenv
-```
-
-**New (UV):**
-```bash
-# Install dependencies and create venv in one command
-uv sync
-
-# Or specify extra groups
-uv sync --extra local  # Install with local model support
-uv sync --extra dev    # Install with dev tools
-```
-
-**4. Running the Application:**
-
-**Old:**
-```bash
-source venv/bin/activate
-python src/rag_assessment_partial.py
-```
-
-**New:**
-```bash
-# UV automatically activates the venv
-uv run python src/rag_assessment_partial.py
-
-# Or with extra dependencies
-uv run --extra local python src/rag_assessment_partial.py
-```
-
-**5. Adding Dependencies:**
-
-**Old:**
-```bash
-pip install new-package
-pip freeze > requirements.txt
-```
-
-**New:**
-```bash
-uv add new-package
-# Automatically updates pyproject.toml and uv.lock
-```
-
-**6. Create `requirements.txt` for Compatibility:**
-
-For users without UV, generate requirements.txt:
-```bash
-uv pip compile pyproject.toml -o requirements.txt
-```
-
-**Migration Steps:**
-
-1. Install UV
-2. Create `pyproject.toml` with current dependencies
-3. Run `uv sync` to create lock file
-4. Update `.gitignore` to include `uv.lock` (or commit it for reproducibility)
-5. Update README.md with new setup instructions
-6. Keep `requirements.txt` for backwards compatibility
-
-**Backwards Compatibility:**
-
-Maintain both workflows:
-
-```markdown
-## Setup
-
-### Option 1: UV (Recommended)
-```bash
-uv sync
-uv run python src/rag_assessment_partial.py
-```
-
-### Option 2: Traditional pip
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python src/rag_assessment_partial.py
-```
-```
-
-**Performance Comparison:**
-
-| Task | pip | UV | Speedup |
-|------|-----|----|----|
-| Install deps (cold) | ~45s | ~2s | 22x |
-| Install deps (cached) | ~15s | ~0.3s | 50x |
-| Dependency resolution | ~10s | ~0.1s | 100x |
-| Virtual env creation | ~3s | Automatic | N/A |
-
-**Project Structure Update:**
-
-```
-rag_assessment/
-├── pyproject.toml           # NEW: Project metadata and dependencies
-├── uv.lock                  # NEW: Lock file for reproducibility
-├── requirements.txt         # Keep for compatibility
-├── .env.template
-├── .gitignore
-├── README.md
-├── faqs/
-├── src/
-│   └── rag_assessment_partial.py
-└── planning/
-```
-
-**Update `.gitignore`:**
-
-```gitignore
-# UV
-.venv/
-uv.lock  # Optional: commit for reproducibility, ignore for flexibility
-
-# OR keep uv.lock in git for reproducible builds
-# (remove uv.lock line from .gitignore)
-```
-
-**Example Commands:**
-
-```bash
-# Initial setup
-uv sync
-
-# Run with different dependency sets
-uv run python src/rag_assessment_partial.py                    # Base deps
-uv run --extra local python src/rag_assessment_partial.py      # With local models
-uv run --extra production python src/rag_assessment_partial.py # With prod features
-
-# Development
-uv add --dev pytest        # Add dev dependency
-uv add numpy --upgrade     # Upgrade specific package
-uv pip list                # List installed packages
-
-# Generate requirements.txt for compatibility
-uv pip compile pyproject.toml -o requirements.txt
-```
-
-**Tradeoffs:**
-
-- ✅ **Much faster** - significant time savings during development
-- ✅ **Simpler workflow** - fewer commands to remember
-- ✅ **Better tooling** - modern approach to Python packaging
-- ⚠️ **New dependency** - users need to install UV first
-- ⚠️ **Less familiar** - not as widely known as pip (yet)
-- ⚠️ **Ecosystem adoption** - still newer, though growing rapidly
-
-**Recommendation:**
-
-Implement UV as the recommended approach while maintaining pip compatibility for maximum accessibility during the interview demo.
-
-**Note:** UV is developed by Astral (creators of Ruff), showing strong backing and future support.
-
----
-
-### Feature: Local Model Support (No API Keys Required)
-
-**Priority:** Medium (Bonus points for interview)
-**Effort:** Medium (~3-4 hours)
-**Category:** Cost Optimization, Privacy, Offline Support
-
-**Description:**
-
-Replace OpenAI API calls with local models to eliminate API key dependency, reduce costs, and enable offline operation. This addresses the bonus points criteria: "If it can run with local models (and doesn't require API keys)".
-
-**Implementation:**
-
-Replace OpenAI embeddings and chat completions with local alternatives:
-
-**Option 1: Using Sentence Transformers + Ollama**
-
-```python
-from sentence_transformers import SentenceTransformer
-import ollama
-import numpy as np
-
-# --- Config ---
-EMBED_MODEL_LOCAL = "all-MiniLM-L6-v2"  # 384-dim embeddings, fast
-LLM_MODEL_LOCAL = "llama3.2"  # or "mistral", "phi3", etc.
-
-# Initialize local models
-embedding_model = SentenceTransformer(EMBED_MODEL_LOCAL)
-
-def embed_texts_local(texts):
-    """
-    Embed texts using local sentence-transformers model.
-    No API calls required.
-    """
-    embeddings = []
-    for text in tqdm(texts, desc="Embedding (local)"):
-        embedding = embedding_model.encode(text, convert_to_numpy=True)
-        embeddings.append(embedding)
-    return embeddings
-
-def generate_answer_local(prompt):
-    """
-    Generate answer using local Ollama model.
-    No API calls required.
-    """
-    response = ollama.chat(
-        model=LLM_MODEL_LOCAL,
-        messages=[{"role": "user", "content": prompt}],
-        options={"temperature": 0.2}
-    )
-    return response['message']['content'].strip()
-
-# In main():
-# Replace: chunk_embeddings = embed_texts(chunks)
-chunk_embeddings = embed_texts_local(chunks)
-
-# Replace: query_emb = np.array(response.data[0].embedding)
-query_emb = embedding_model.encode(query, convert_to_numpy=True)
-
-# Replace: answer = response.choices[0].message.content.strip()
-answer = generate_answer_local(prompt)
-```
-
-**Option 2: Using Hugging Face Transformers (Fully Offline)**
-
-```python
-from transformers import AutoTokenizer, AutoModel, pipeline
-import torch
-
-# Load models once at startup
-embed_tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
-embed_model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
-
-# For text generation (smaller model for faster inference)
-llm_pipeline = pipeline(
-    "text-generation",
-    model="microsoft/Phi-3-mini-4k-instruct",
-    device="cpu",  # or "cuda" if GPU available
-    max_new_tokens=512
-)
-
-def embed_text_hf(text):
-    """Embed using Hugging Face model."""
-    inputs = embed_tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
-    with torch.no_grad():
-        outputs = embed_model(**inputs)
-    # Mean pooling
-    embedding = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
-    return embedding
-
-def generate_answer_hf(prompt):
-    """Generate answer using Hugging Face pipeline."""
-    result = llm_pipeline(prompt, max_new_tokens=512, temperature=0.2, do_sample=True)
-    return result[0]['generated_text'].replace(prompt, '').strip()
-```
-
-**Setup Instructions:**
-
-**For Ollama (Recommended for ease of use):**
-```bash
-# 1. Install Ollama
-# macOS:
-brew install ollama
-
-# 2. Pull a model
-ollama pull llama3.2  # or mistral, phi3, etc.
-
-# 3. Install Python dependencies
-pip install sentence-transformers ollama
-```
-
-**For Hugging Face (Fully offline):**
-```bash
-pip install transformers torch sentence-transformers
-```
-
-**Model Comparison:**
-
-| Model Type | Option | Size | Speed | Quality | Offline |
-|------------|--------|------|-------|---------|---------|
-| Embeddings | OpenAI ada-002 | N/A (API) | Fast | Excellent | ❌ |
-| Embeddings | all-MiniLM-L6-v2 | 80MB | Very Fast | Good | ✅ |
-| Embeddings | all-mpnet-base-v2 | 420MB | Medium | Excellent | ✅ |
-| LLM | GPT-3.5-turbo | N/A (API) | Fast | Excellent | ❌ |
-| LLM | Llama 3.2 (3B) | 2GB | Medium | Very Good | ✅ |
-| LLM | Phi-3 Mini | 2.4GB | Fast | Good | ✅ |
-| LLM | Mistral 7B | 4GB | Slow (CPU) | Excellent | ✅ |
-
-**Benefits:**
-
-- ✅ **No API keys required** (addresses bonus points)
-- ✅ **Zero API costs** - completely free after initial download
-- ✅ **Privacy** - data never leaves your machine
-- ✅ **Offline operation** - works without internet
-- ✅ **Deterministic** - same results every time
-- ✅ **Lower latency** - no network calls (if using GPU)
-
-**Tradeoffs:**
-
-- ⚠️ **Initial setup** - requires downloading models (2-4GB)
-- ⚠️ **Hardware requirements** - GPU recommended for LLMs (but works on CPU)
-- ⚠️ **Slower inference** - especially for LLMs on CPU
-- ⚠️ **Slightly lower quality** - local models may not match GPT-3.5-turbo
-
-**Configuration Toggle (Best of Both Worlds):**
-
-```python
-import os
-
-USE_LOCAL_MODELS = os.getenv("USE_LOCAL_MODELS", "false").lower() == "true"
-
-if USE_LOCAL_MODELS:
-    from sentence_transformers import SentenceTransformer
-    import ollama
-    embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-    print("Using local models (no API key required)")
-else:
-    from openai import OpenAI
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    print("Using OpenAI API")
-
-def embed_texts(texts):
-    if USE_LOCAL_MODELS:
-        return embed_texts_local(texts)
-    else:
-        return embed_texts_openai(texts)
-
-# Similar pattern for answer generation
-```
-
-**Usage:**
-```bash
-# Run with OpenAI (default)
-python src/rag_assessment_partial.py
-
-# Run with local models (no API key)
-USE_LOCAL_MODELS=true python src/rag_assessment_partial.py
-```
-
-**Testing:**
-
-Verify that answers are comparable between OpenAI and local models:
-
-```bash
-# Test with OpenAI
-echo "What is the PTO policy?" | python src/rag_assessment_partial.py
-
-# Test with local models
-echo "What is the PTO policy?" | USE_LOCAL_MODELS=true python src/rag_assessment_partial.py
-
-# Compare results
-```
-
-**Recommended Models for This Use Case:**
-
-1. **Embeddings:** `all-MiniLM-L6-v2` - Fast, small, good quality
-2. **LLM (CPU):** `phi3:mini` - Best balance of speed/quality on CPU
-3. **LLM (GPU):** `llama3.2:3b` - Better quality, still fast on GPU
-
-**Note:** This feature directly addresses the bonus points criterion: "If it can run with local models (and doesn't require API keys)"
+**Quick Summary:**
+- 10-100x faster than pip
+- Single tool for environment and dependencies
+- Lock file support for reproducibility
+- Maintains pip compatibility
+
+**See:** Full implementation details in original backlog section
 
 ---
 
