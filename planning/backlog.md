@@ -1,35 +1,5 @@
 # Project Backlog
 
-## In Progress
-
-### Feature: Local Model Support (No API Keys Required)
-
-**Status:** 🚧 Implementation in progress
-**Priority:** Medium (Bonus points for interview)
-**Effort:** Medium (~3-4 hours)
-**Category:** Cost Optimization, Privacy, Offline Support
-
-**Implementation Plan:** [local_model_implementation_plan.md](./local_model_implementation_plan.md)
-
-**Description:**
-Replace OpenAI API calls with local models to eliminate API key dependency, reduce costs, and enable offline operation. This addresses the bonus points criteria: "If it can run with local models (and doesn't require API keys)".
-
-**Key Features:**
-- Uses `all-MiniLM-L6-v2` (sentence-transformers) for embeddings
-- Uses `llama3.2:3b` (Ollama) for answer generation
-- Configuration toggle via `USE_LOCAL_MODELS` environment variable
-- Maintains compatibility with OpenAI API mode
-- Same JSON output format and source citation requirements
-
-**Benefits:**
-- ✅ No API keys required (bonus points)
-- ✅ Zero API costs
-- ✅ Privacy - data never leaves machine
-- ✅ Offline operation
-- ✅ Faster embeddings than OpenAI API
-
----
-
 ## Future Enhancements
 
 ### Feature: Multiple Questions Support
@@ -135,6 +105,7 @@ Cache document embeddings to avoid re-computing on every run.
 **Implementation Options:**
 
 1. **File-based cache** (simplest):
+
    ```python
    import pickle
 
@@ -148,8 +119,8 @@ Cache document embeddings to avoid re-computing on every run.
        with open(CACHE_FILE, 'wb') as f:
            pickle.dump(chunk_embeddings, f)
    ```
-
 2. **Hash-based cache** (invalidates on content change):
+
    - Hash FAQ directory contents
    - Store embeddings with hash key
    - Regenerate if hash changes
@@ -792,6 +763,7 @@ cat logs/chats/chat_*.json | jq '.'
 Transition from traditional pip/venv to UV for faster, simpler dependency management. UV is a modern Python package manager written in Rust that provides significantly faster installation and better dependency resolution.
 
 **Quick Summary:**
+
 - 10-100x faster than pip
 - Single tool for environment and dependencies
 - Lock file support for reproducibility
@@ -806,31 +778,37 @@ Transition from traditional pip/venv to UV for faster, simpler dependency manage
 The features above align with key production scalability suggestions:
 
 ### Embedding Optimization
+
 - ✅ **Batch API calls** (up to 2048 inputs per request) - See "Batch Embedding API Calls"
 - ✅ **Cache embeddings with TTL** - See "Embedding Cache with TTL"
 - 🔄 **Consider newer models** (text-embedding-3-small/large) - Future consideration
 
 ### Chunking Strategy
+
 - ✅ **Use semantic chunking** (sentence/paragraph boundaries) - See "Semantic Chunking with Overlap"
 - ✅ **Add chunk overlap** (e.g., 50 characters) to maintain context - See "Semantic Chunking with Overlap"
 - ✅ **Consider RecursiveCharacterTextSplitter** from LangChain - Implemented in semantic chunking feature
 
 ### Vector Database Integration
+
 - ✅ **Replace in-memory storage** with Pinecone, Weaviate, or Qdrant - See "Vector Database Integration"
 - ✅ **Persistent storage** of embeddings - Covered in vector database feature
 - ✅ **Efficient similarity search** at scale - Covered in vector database feature
 
 ### Answer Quality
+
 - ✅ **Add re-ranking step** after initial retrieval - See "Re-ranking after Retrieval"
 - ✅ **Implement query expansion/rewriting** - See "Query Expansion & Rewriting"
 - 🔄 **Use prompt templates with few-shot examples** - Future consideration
 
 ### Observability
+
 - ✅ **Log query-answer pairs** for evaluation - See "Logging & Observability with Metrics"
 - ✅ **Track latency metrics** (embedding, retrieval, generation) - See "Logging & Observability with Metrics"
 - ✅ **Monitor API costs and rate limits** - Covered in logging feature
 
 ### Error Handling
+
 - ✅ **Retry logic** for API failures - See "Error Handling & Validation with Retry Logic"
 - ✅ **Fallback responses** when no relevant chunks found - See "Error Handling & Validation with Retry Logic"
 - ✅ **Input validation and sanitization** - See "Error Handling & Validation with Retry Logic"
@@ -840,6 +818,7 @@ The features above align with key production scalability suggestions:
 ## Dependencies to Add
 
 ### Current (Required for Base Implementation)
+
 ```
 openai
 numpy
@@ -848,6 +827,7 @@ python-dotenv
 ```
 
 ### Future (as features are implemented)
+
 ```
 langchain                  # For semantic chunking
 chromadb                   # For vector database (lightweight option)
@@ -860,6 +840,7 @@ torch                      # Required for transformers
 ```
 
 ### For Local Models (Bonus Points)
+
 ```
 # Option 1: Ollama (Recommended)
 sentence-transformers     # For local embeddings
