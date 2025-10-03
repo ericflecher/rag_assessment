@@ -506,6 +506,252 @@ logging.info(f"Total latency: {time.time() - start_time:.3f}s")
 
 ---
 
+### Feature: Chat Logging with Similarity Scores
+
+**Priority:** Medium
+**Effort:** Small (~30 minutes)
+**Category:** Observability, Debugging
+
+**Description:**
+
+Save chat interactions to JSON files in `logs/chats/` directory for analysis, debugging, and quality assessment. Each chat session will be logged with the user question, generated answer, sources, and similarity scores for transparency.
+
+**Implementation:**
+
+**1. Create logging function:**
+
+```python
+import json
+import os
+from datetime import datetime
+
+def save_chat_log(query, answer, sources, top_indices, sims, chunks):
+    """
+    Save chat interaction to logs/chats/ directory.
+
+    Args:
+        query: User question
+        answer: Generated answer
+        sources: List of source files
+        top_indices: Indices of retrieved chunks
+        sims: Similarity scores array
+        chunks: All text chunks
+    """
+    # Create logs directory if it doesn't exist
+    log_dir = "logs/chats"
+    os.makedirs(log_dir, exist_ok=True)
+
+    # Generate timestamp-based filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{log_dir}/chat_{timestamp}.json"
+
+    # Build log data with similarity scores
+    retrieved_chunks = []
+    for idx, i in enumerate(top_indices):
+        retrieved_chunks.append({
+            "rank": idx + 1,
+            "source": sources[i],
+            "similarity_score": float(sims[i]),
+            "chunk_text": chunks[i]
+        })
+
+    # Get unique sources with their best similarity scores
+    source_scores = {}
+    for i in top_indices:
+        source = sources[i]
+        score = float(sims[i])
+        if source not in source_scores or score > source_scores[source]:
+            source_scores[source] = score
+
+    log_data = {
+        "timestamp": datetime.now().isoformat(),
+        "query": query,
+        "answer": answer,
+        "sources": {
+            "files": list(set([sources[i] for i in top_indices])),
+            "scores": source_scores
+        },
+        "retrieval": {
+            "top_k": len(top_indices),
+            "chunks": retrieved_chunks
+        },
+        "metadata": {
+            "embed_model": "text-embedding-ada-002",
+            "llm_model": "gpt-3.5-turbo",
+            "chunk_size": 200
+        }
+    }
+
+    # Write to file
+    with open(filename, 'w') as f:
+        json.dump(log_data, f, indent=2)
+
+    return filename
+```
+
+**2. Update main() to call logging:**
+
+```python
+def main():
+    # ... existing code ...
+
+    # --- 5. Generate Answer ---
+    # ... existing answer generation ...
+
+    # --- 6. Output JSON ---
+    unique_sources = []
+    for source in top_files:
+        if source not in unique_sources:
+            unique_sources.append(source)
+
+    output = {
+        "answer": answer,
+        "sources": unique_sources
+    }
+    print(json.dumps(output, indent=2))
+
+    # --- 7. Save Chat Log ---
+    log_file = save_chat_log(query, answer, sources, top_indices, sims, chunks)
+    print(f"\n💾 Chat saved to: {log_file}", file=sys.stderr)
+```
+
+**3. Update `.gitignore`:**
+
+```gitignore
+# Chat logs
+logs/
+*.log
+```
+
+**Example Output File:** `logs/chats/chat_20250103_143022.json`
+
+```json
+{
+  "timestamp": "2025-01-03T14:30:22.123456",
+  "query": "What is the PTO policy?",
+  "answer": "The PTO policy at TechFlow Solutions offers unlimited PTO with a minimum requirement of 15 days per year...",
+  "sources": {
+    "files": [
+      "faq_employee.md",
+      "faq_sso.md"
+    ],
+    "scores": {
+      "faq_employee.md": 0.8482,
+      "faq_sso.md": 0.7194
+    }
+  },
+  "retrieval": {
+    "top_k": 4,
+    "chunks": [
+      {
+        "rank": 1,
+        "source": "faq_employee.md",
+        "similarity_score": 0.8482,
+        "chunk_text": "# TechFlow Solutions Employee Handbook\n\n## What is our unlimited PTO policy?\nTechFlow offers unlimited PTO with a minimum requirement of 15 days per year..."
+      },
+      {
+        "rank": 2,
+        "source": "faq_employee.md",
+        "similarity_score": 0.8135,
+        "chunk_text": "eeding 2 consecutive weeks. PTO requests require 2-week notice except for emergencies..."
+      },
+      {
+        "rank": 3,
+        "source": "faq_employee.md",
+        "similarity_score": 0.7332,
+        "chunk_text": "r 1, then 22.5% each subsequent year. Equity grants are reviewed annually in March..."
+      },
+      {
+        "rank": 4,
+        "source": "faq_sso.md",
+        "similarity_score": 0.7194,
+        "chunk_text": "# SSO FAQ\n\nQ: How do I enable SSO?\nA: Contact your admin to enable SSO for your account."
+      }
+    ]
+  },
+  "metadata": {
+    "embed_model": "text-embedding-ada-002",
+    "llm_model": "gpt-3.5-turbo",
+    "chunk_size": 200
+  }
+}
+```
+
+**Benefits:**
+
+- ✅ **Debugging**: See exactly which chunks were retrieved and their scores
+- ✅ **Quality Assessment**: Review if low-relevance sources are being included
+- ✅ **Analytics**: Track query patterns and performance over time
+- ✅ **Reproducibility**: Full context of each interaction saved
+- ✅ **Transparency**: Understand why certain answers were generated
+- ✅ **Training Data**: Potential use for fine-tuning or evaluation
+
+**Usage:**
+
+After each chat interaction, a timestamped JSON file is automatically created:
+
+```bash
+python src/rag_assessment_partial.py
+# Enter question: What is the PTO policy?
+# ... answer displayed ...
+# 💾 Chat saved to: logs/chats/chat_20250103_143022.json
+```
+
+**Analysis Scripts (Future Enhancement):**
+
+```bash
+# Count total chats
+ls logs/chats/ | wc -l
+
+# Find low-similarity retrievals
+jq '.retrieval.chunks[] | select(.similarity_score < 0.75)' logs/chats/*.json
+
+# Average similarity by source file
+jq '.sources.scores' logs/chats/*.json | jq -s 'add'
+```
+
+**Configuration Option:**
+
+Add to config section to enable/disable logging:
+
+```python
+# --- Config ---
+FAQ_DIR = "faqs"
+EMBED_MODEL = "text-embedding-ada-002"
+LLM_MODEL = "gpt-3.5-turbo"
+CHUNK_SIZE = 200
+TOP_K = 4
+ENABLE_LOGGING = True  # Set to False to disable chat logging
+```
+
+**Privacy Considerations:**
+
+- Logs contain full query and answer text
+- Ensure logs/ directory is in .gitignore
+- Consider adding log rotation or auto-cleanup for production
+- Could add flag to disable logging for sensitive queries
+
+**Testing:**
+
+```bash
+# Run a few queries
+python src/rag_assessment_partial.py
+# Enter: What is the PTO policy?
+
+python src/rag_assessment_partial.py
+# Enter: How do I reset my password?
+
+# Verify logs were created
+ls -lh logs/chats/
+
+# View a log file
+cat logs/chats/chat_*.json | jq '.'
+```
+
+**Note:** This feature provides the observability needed to understand and debug the "why is faq_sso.md in sources?" type questions by showing exact similarity scores for each retrieved chunk.
+
+---
+
 ### Feature: UV Package Manager Integration
 
 **Priority:** Low

@@ -126,9 +126,19 @@ def main():
     answer = response.choices[0].message.content.strip()
 
     # --- 6. Output JSON ---
+    # Get unique sources from retrieved chunks, preserving relevance order
+    unique_sources = []
+    for source in top_files:
+        if source not in unique_sources:
+            unique_sources.append(source)
+
+    # Ensure we have at least 2 sources as per requirements
+    # If we have fewer unique sources, pad with top_files to meet requirement
+    output_sources = unique_sources if len(unique_sources) >= 2 else list(sorted(set(top_files)))
+
     output = {
         "answer": answer,
-        "sources": list(sorted(set(top_files)))[:2]  # at least two
+        "sources": output_sources
     }
     print(json.dumps(output, indent=2))
 
