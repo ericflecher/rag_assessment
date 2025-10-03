@@ -16,7 +16,12 @@ A minimal Retrieval-Augmented Generation (RAG) prototype that answers questions 
 
 ## Local FAQ RAG
 
-![Local FAQ RAG](image/README/1759528629088.png "")
+![Local FAQ RAG](image/README/1759528629088.png)
+
+## OpenAI FAQ RAG
+
+![OpenAI FAQ RAG](image/README/openAI.png)
+
 
 ## Architecture
 
