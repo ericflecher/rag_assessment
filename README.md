@@ -14,6 +14,8 @@ A minimal Retrieval-Augmented Generation (RAG) prototype that answers questions 
 - **⚡ Simple CLI**: Interactive command-line interface for queries
 - **🎛️ Configurable**: Easy toggle between local and cloud models via .env
 
+## Local FAQ RAG
+
 ## Architecture
 
 1. **Load & Chunk**: Reads markdown FAQ files and splits into ~200 character chunks
