@@ -22,7 +22,6 @@ A minimal Retrieval-Augmented Generation (RAG) prototype that answers questions 
 
 ![OpenAI FAQ RAG](image/README/openAI.png)
 
-
 ## Architecture
 
 1. **Load & Chunk**: Reads markdown FAQ files and splits into ~200 character chunks
@@ -419,34 +418,6 @@ USE_LOCAL_MODELS=true python src/rag_assessment_partial.py
 # Test OpenAI (temporarily override .env)
 USE_LOCAL_MODELS=false python src/rag_assessment_partial.py
 ```
-
-## Performance
-
-### Local Models (CPU)
-
-- **Embedding (5 chunks)**: ~1.5 seconds (faster than OpenAI!)
-- **Query Embedding**: ~0.1 seconds
-- **Retrieval**: <0.1 seconds (in-memory)
-- **Answer Generation**: ~10-20 seconds
-- **Total per query**: ~12-22 seconds
-- **Cost**: $0
-
-### OpenAI API
-
-- **Embedding (5 chunks)**: ~3-5 seconds
-- **Query Embedding**: ~0.5 seconds
-- **Retrieval**: <0.1 seconds (in-memory)
-- **Answer Generation**: ~2-4 seconds
-- **Total per query**: ~6-10 seconds
-- **Cost**: ~$0.01 per query
-
-### Local Models (GPU)
-
-- **Answer Generation**: ~3-5 seconds (faster than OpenAI!)
-- **Total per query**: ~5-7 seconds
-- **Cost**: $0
-
-**Summary:** Local embeddings are faster, OpenAI generation is faster (on CPU). With a GPU, local models can beat OpenAI on both speed and cost!
 
 ## Testing
 
