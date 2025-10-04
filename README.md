@@ -276,7 +276,7 @@ rag_assessment/
 
 - **[Feature Backlog](planning/backlog.md)** - Future enhancements and improvements
 
-## How It Works
+## How It Works 
 
 ### 1. Text Chunking
 
