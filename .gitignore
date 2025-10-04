@@ -60,7 +60,8 @@ Temporary Items
 embeddings_cache.pkl
 *.log
 rag_queries.log
-docs/
+docs/*
+!docs/.gitkeep
 
 # Model caches (if downloading local models)
 models/
