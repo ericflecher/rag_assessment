@@ -270,7 +270,10 @@ rag_assessment/
 ## Documentation
 
 - **[Technical Exercise Requirements](docs/)** - Original assessment guidelines and acceptance criteria
-- **[Implementation Plan](planning/mvp_implementation_plan.md)** - Detailed MVP implementation blueprints
+- **[MVP Implementation Plan](planning/mvp_implementation_plan.md)** - Detailed MVP implementation blueprints
+- **[Local Model Implementation Plan](planning/local_model_implementation_plan.md)** - Detailed local model implementation blueprints
+- **[Baseline Test Results](planning/baseline_test_results.md)** - Baseline test results
+
 - **[Feature Backlog](planning/backlog.md)** - Future enhancements and improvements
 
 ## How It Works
