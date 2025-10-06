@@ -999,6 +999,343 @@ diff <(python src/rag_assessment_partial.py --model openai <<< "question") \
 
 ---
 
+### Feature: Multiple Document Format Support
+
+**Priority:** Medium
+**Effort:** Medium (~2-3 hours)
+**Category:** Flexibility, Data Ingestion
+
+**Description:**
+
+Extend the document loader to support multiple file formats beyond Markdown (.md), including PDF, Word documents (.docx), plain text (.txt), HTML, and more. This allows the RAG system to ingest knowledge from diverse document sources.
+
+**Implementation:**
+
+```python
+import os
+from pathlib import Path
+from typing import List, Tuple
+
+# Add document parsing libraries
+from pypdf import PdfReader
+from docx import Document as DocxDocument
+from bs4 import BeautifulSoup
+import chardet
+
+def load_pdf(file_path: str) -> str:
+    """Extract text from PDF file."""
+    reader = PdfReader(file_path)
+    text = []
+    for page in reader.pages:
+        text.append(page.extract_text())
+    return "\n\n".join(text)
+
+def load_docx(file_path: str) -> str:
+    """Extract text from Word document."""
+    doc = DocxDocument(file_path)
+    paragraphs = [para.text for para in doc.paragraphs if para.text.strip()]
+    return "\n\n".join(paragraphs)
+
+def load_html(file_path: str) -> str:
+    """Extract text from HTML file."""
+    with open(file_path, 'r', encoding='utf-8') as f:
+        soup = BeautifulSoup(f.read(), 'html.parser')
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+        return soup.get_text(separator="\n", strip=True)
+
+def load_txt(file_path: str) -> str:
+    """Load plain text file with encoding detection."""
+    # Detect encoding
+    with open(file_path, 'rb') as f:
+        raw_data = f.read()
+        result = chardet.detect(raw_data)
+        encoding = result['encoding'] or 'utf-8'
+
+    # Read with detected encoding
+    with open(file_path, 'r', encoding=encoding) as f:
+        return f.read()
+
+def load_markdown(file_path: str) -> str:
+    """Load markdown file (existing implementation)."""
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+# Document loader registry
+DOCUMENT_LOADERS = {
+    '.md': load_markdown,
+    '.markdown': load_markdown,
+    '.txt': load_txt,
+    '.text': load_txt,
+    '.pdf': load_pdf,
+    '.docx': load_docx,
+    '.doc': load_docx,  # Note: .doc requires python-docx or additional tools
+    '.html': load_html,
+    '.htm': load_html,
+}
+
+def load_and_chunk_documents(directory: str, chunk_size: int = 200) -> Tuple[List[str], List[str]]:
+    """
+    Load documents from directory supporting multiple formats.
+
+    Args:
+        directory: Path to directory containing documents
+        chunk_size: Size of text chunks in characters
+
+    Returns:
+        Tuple of (chunks, sources) where sources contain filename and format
+    """
+    chunks = []
+    sources = []
+
+    # Scan directory for supported file types
+    supported_extensions = list(DOCUMENT_LOADERS.keys())
+
+    for file_path in Path(directory).rglob('*'):
+        if not file_path.is_file():
+            continue
+
+        ext = file_path.suffix.lower()
+        if ext not in supported_extensions:
+            continue
+
+        try:
+            # Load document using appropriate loader
+            loader = DOCUMENT_LOADERS[ext]
+            text = loader(str(file_path))
+
+            # Chunk the text
+            file_chunks = chunk_text(text, chunk_size)
+
+            # Track source with file type
+            source_name = f"{file_path.name}"
+            chunks.extend(file_chunks)
+            sources.extend([source_name] * len(file_chunks))
+
+            print(f"✓ Loaded {file_path.name} ({ext}) - {len(file_chunks)} chunks")
+
+        except Exception as e:
+            print(f"✗ Error loading {file_path.name}: {e}")
+            continue
+
+    return chunks, sources
+
+def chunk_text(text: str, size: int = 200) -> List[str]:
+    """Split text into chunks (existing implementation)."""
+    return [text[i:i+size] for i in range(0, len(text), size)]
+```
+
+**Updated Main Function:**
+
+```python
+def main():
+    # Load environment variables
+    load_dotenv()
+
+    # --- 1. Load and chunk documents (now supports multiple formats) ---
+    chunks, sources = load_and_chunk_documents(FAQ_DIR, CHUNK_SIZE)
+
+    if not chunks:
+        print(f"Error: No supported documents found in '{FAQ_DIR}'", file=sys.stderr)
+        print(f"Supported formats: {', '.join(DOCUMENT_LOADERS.keys())}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"\nLoaded {len(chunks)} chunks from {len(set(sources))} documents")
+    print(f"Document types: {', '.join(set(Path(s).suffix for s in sources))}")
+
+    # ... rest of implementation
+```
+
+**Configuration:**
+
+```python
+# --- Config ---
+FAQ_DIR = "faqs"  # Can now contain .md, .pdf, .docx, .txt, .html files
+CHUNK_SIZE = 200
+TOP_K = 4
+
+# Optional: Filter by document types
+ALLOWED_FORMATS = ['.md', '.pdf', '.docx', '.txt']  # None = allow all
+```
+
+**Dependencies:**
+
+```bash
+# Core dependencies
+pip install pypdf python-docx beautifulsoup4 chardet lxml
+
+# Optional: For better PDF extraction
+pip install pdfplumber  # Alternative to pypdf with better table support
+
+# Optional: For .doc (legacy Word) support
+pip install pywin32  # Windows only, or use LibreOffice
+```
+
+**Requirements.txt Update:**
+
+```txt
+openai>=1.0.0
+numpy>=1.24.0
+tqdm>=4.65.0
+python-dotenv>=1.0.0
+
+# Document parsing
+pypdf>=3.17.0
+python-docx>=1.1.0
+beautifulsoup4>=4.12.0
+chardet>=5.2.0
+lxml>=4.9.0
+```
+
+**Directory Structure:**
+
+```
+faqs/
+├── faq_auth.md          # Markdown (existing)
+├── faq_sso.md           # Markdown (existing)
+├── faq_employee.md      # Markdown (existing)
+├── benefits.pdf         # PDF (new)
+├── handbook.docx        # Word (new)
+├── policies.html        # HTML (new)
+└── guidelines.txt       # Plain text (new)
+```
+
+**Benefits:**
+
+- **Versatile Ingestion**: Accept documents in common business formats
+- **Legacy Support**: Work with existing PDF/Word documentation
+- **Web Content**: Ingest HTML documentation or scraped web pages
+- **Gradual Migration**: No need to convert everything to Markdown
+- **Enterprise Ready**: Support formats used in corporate environments
+
+**Advanced Features (Optional):**
+
+```python
+# 1. Document metadata extraction
+def load_pdf_with_metadata(file_path: str) -> Tuple[str, dict]:
+    """Extract text and metadata from PDF."""
+    reader = PdfReader(file_path)
+    text = "\n\n".join([page.extract_text() for page in reader.pages])
+    metadata = {
+        'author': reader.metadata.get('/Author', 'Unknown'),
+        'title': reader.metadata.get('/Title', Path(file_path).stem),
+        'pages': len(reader.pages),
+        'created': reader.metadata.get('/CreationDate', None)
+    }
+    return text, metadata
+
+# 2. Table extraction from PDFs
+import pdfplumber
+
+def load_pdf_with_tables(file_path: str) -> str:
+    """Extract text and tables from PDF."""
+    with pdfplumber.open(file_path) as pdf:
+        text_parts = []
+        for page in pdf.pages:
+            # Extract text
+            text_parts.append(page.extract_text())
+
+            # Extract tables as markdown
+            tables = page.extract_tables()
+            for table in tables:
+                table_md = "\n".join([" | ".join(row) for row in table])
+                text_parts.append(f"\n\n{table_md}\n\n")
+
+        return "\n\n".join(text_parts)
+
+# 3. Image OCR from PDFs (requires tesseract)
+from pdf2image import convert_from_path
+import pytesseract
+
+def load_pdf_with_ocr(file_path: str) -> str:
+    """Extract text from scanned PDFs using OCR."""
+    images = convert_from_path(file_path)
+    text = []
+    for image in images:
+        text.append(pytesseract.image_to_string(image))
+    return "\n\n".join(text)
+```
+
+**Error Handling:**
+
+```python
+def load_and_chunk_documents(directory: str, chunk_size: int = 200) -> Tuple[List[str], List[str]]:
+    """Load documents with comprehensive error handling."""
+    chunks = []
+    sources = []
+    errors = []
+
+    for file_path in Path(directory).rglob('*'):
+        if not file_path.is_file():
+            continue
+
+        ext = file_path.suffix.lower()
+        if ext not in DOCUMENT_LOADERS:
+            continue
+
+        try:
+            loader = DOCUMENT_LOADERS[ext]
+            text = loader(str(file_path))
+
+            # Validate extracted text
+            if not text or len(text.strip()) < 10:
+                errors.append(f"{file_path.name}: Empty or too short")
+                continue
+
+            file_chunks = chunk_text(text, chunk_size)
+            source_name = f"{file_path.name}"
+            chunks.extend(file_chunks)
+            sources.extend([source_name] * len(file_chunks))
+
+            print(f"✓ {file_path.name} ({ext}) - {len(file_chunks)} chunks")
+
+        except Exception as e:
+            errors.append(f"{file_path.name}: {str(e)}")
+            continue
+
+    # Report errors
+    if errors:
+        print(f"\n⚠️  Errors loading {len(errors)} document(s):")
+        for error in errors:
+            print(f"  - {error}")
+
+    return chunks, sources
+```
+
+**Testing:**
+
+```bash
+# Create test documents directory
+mkdir -p test_docs
+
+# Add various document types
+echo "Test content" > test_docs/test.txt
+# Add PDF, Word files manually
+
+# Run with test directory
+FAQ_DIR=test_docs python src/rag_assessment_partial.py
+
+# Expected output:
+# ✓ Loaded test.txt (.txt) - 1 chunks
+# ✓ Loaded benefits.pdf (.pdf) - 45 chunks
+# ✓ Loaded handbook.docx (.docx) - 32 chunks
+#
+# Loaded 78 chunks from 3 documents
+# Document types: .txt, .pdf, .docx
+```
+
+**Performance Considerations:**
+
+- PDF extraction can be slow for large documents (use caching)
+- Word documents (.docx) are fast to parse
+- HTML parsing depends on document complexity
+- Consider pre-processing large PDFs offline
+
+**Note:** This feature makes the RAG system production-ready for enterprise environments where documentation exists in multiple formats. Combined with the embedding cache feature, it provides efficient multi-format document ingestion.
+
+---
+
 ## Production Scalability Summary
 
 The features above align with key production scalability suggestions:
