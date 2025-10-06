@@ -771,6 +771,232 @@ Transition from traditional pip/venv to UV for faster, simpler dependency manage
 
 **See:** Full implementation details in original backlog section
 
+### Feature: Multi-Model Support
+
+**Priority:** High
+**Effort:** Medium (~2-3 hours)
+**Category:** Flexibility, Cost Optimization
+
+**Description:**
+
+Add support for switching between different embedding and LLM models (OpenAI, Anthropic, local models via Ollama). Allow runtime model selection and support multiple providers simultaneously.
+
+**Implementation:**
+
+```python
+# --- Config ---
+FAQ_DIR = "faqs"
+CHUNK_SIZE = 200
+TOP_K = 4
+
+# Model configurations
+MODELS = {
+    "openai": {
+        "embed_model": "text-embedding-ada-002",
+        "llm_model": "gpt-3.5-turbo",
+        "provider": "openai"
+    },
+    "openai-advanced": {
+        "embed_model": "text-embedding-3-large",
+        "llm_model": "gpt-4-turbo",
+        "provider": "openai"
+    },
+    "anthropic": {
+        "embed_model": "voyage-2",  # Via Voyage AI
+        "llm_model": "claude-3-5-sonnet-20241022",
+        "provider": "anthropic"
+    },
+    "local": {
+        "embed_model": "all-MiniLM-L6-v2",
+        "llm_model": "llama3.2:3b",
+        "provider": "ollama"
+    }
+}
+
+# Select active model configuration
+ACTIVE_CONFIG = "openai"  # Change to switch models
+
+def get_embedding_client(provider):
+    """Return appropriate embedding client based on provider."""
+    if provider == "openai":
+        from openai import OpenAI
+        return OpenAI()
+    elif provider == "anthropic":
+        # Use Voyage AI for embeddings with Anthropic
+        import voyageai
+        return voyageai.Client()
+    elif provider == "ollama":
+        from sentence_transformers import SentenceTransformer
+        return SentenceTransformer(MODELS[ACTIVE_CONFIG]["embed_model"])
+    else:
+        raise ValueError(f"Unknown provider: {provider}")
+
+def get_llm_client(provider):
+    """Return appropriate LLM client based on provider."""
+    if provider == "openai":
+        from openai import OpenAI
+        return OpenAI()
+    elif provider == "anthropic":
+        import anthropic
+        return anthropic.Anthropic()
+    elif provider == "ollama":
+        import ollama
+        return ollama.Client()
+    else:
+        raise ValueError(f"Unknown provider: {provider}")
+
+def embed_texts(texts, provider, model_name):
+    """Embed texts using specified provider."""
+    embeddings = []
+
+    if provider == "openai":
+        client = get_embedding_client(provider)
+        for text in tqdm(texts, desc="Embedding"):
+            response = client.embeddings.create(
+                input=[text],
+                model=model_name
+            )
+            embeddings.append(np.array(response.data[0].embedding))
+
+    elif provider == "anthropic":
+        # Use Voyage AI for embeddings
+        client = get_embedding_client(provider)
+        for text in tqdm(texts, desc="Embedding"):
+            result = client.embed([text], model=model_name)
+            embeddings.append(np.array(result.embeddings[0]))
+
+    elif provider == "ollama":
+        # Use SentenceTransformers for local embeddings
+        model = get_embedding_client(provider)
+        embeddings = [np.array(emb) for emb in model.encode(texts, show_progress_bar=True)]
+
+    return embeddings
+
+def generate_answer(query, context, provider, model_name):
+    """Generate answer using specified LLM provider."""
+    prompt = (
+        f"Answer the following question using the provided context. "
+        f"Cite at least two of the file names in your answer.\n\n"
+        f"Context:\n{context}\n\n"
+        f"Question: {query}\n\n"
+        f"Answer (cite sources):"
+    )
+
+    if provider == "openai":
+        client = get_llm_client(provider)
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2
+        )
+        return response.choices[0].message.content.strip()
+
+    elif provider == "anthropic":
+        client = get_llm_client(provider)
+        message = client.messages.create(
+            model=model_name,
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return message.content[0].text
+
+    elif provider == "ollama":
+        client = get_llm_client(provider)
+        response = client.chat(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response['message']['content']
+```
+
+**CLI Interface (Optional Enhancement):**
+
+```python
+import argparse
+
+parser = argparse.ArgumentParser(description="RAG Q&A with multiple model support")
+parser.add_argument(
+    "--model",
+    choices=list(MODELS.keys()),
+    default="openai",
+    help="Model configuration to use"
+)
+args = parser.parse_args()
+
+ACTIVE_CONFIG = args.model
+```
+
+**Usage:**
+
+```bash
+# Use OpenAI (default)
+python src/rag_assessment_partial.py
+
+# Use Claude with Anthropic
+python src/rag_assessment_partial.py --model anthropic
+
+# Use local Ollama models (no API costs)
+python src/rag_assessment_partial.py --model local
+```
+
+**Benefits:**
+
+- **Cost Optimization**: Choose cheaper models for development, better models for production
+- **Privacy**: Use local models for sensitive data
+- **Performance Testing**: Compare model quality across providers
+- **Vendor Flexibility**: Avoid lock-in to single provider
+- **Offline Support**: Local models work without internet
+
+**Dependencies:**
+
+```bash
+# OpenAI (already installed)
+pip install openai
+
+# Anthropic + Voyage AI embeddings
+pip install anthropic voyageai
+
+# Local models (Ollama)
+pip install ollama sentence-transformers
+
+# Or install all at once
+pip install openai anthropic voyageai ollama sentence-transformers
+```
+
+**Environment Variables:**
+
+```bash
+# .env file
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+VOYAGE_API_KEY=pa-...
+```
+
+**Model Comparison Matrix:**
+
+| Provider | Embedding Model | LLM Model | Cost/1K | Speed | Quality | Offline |
+|----------|----------------|-----------|---------|-------|---------|---------|
+| OpenAI | ada-002 | gpt-3.5-turbo | $0.0002 | Fast | Good | ❌ |
+| OpenAI | embedding-3-large | gpt-4-turbo | $0.0003 | Medium | Excellent | ❌ |
+| Anthropic | voyage-2 | claude-3.5-sonnet | $0.0001 | Fast | Excellent | ❌ |
+| Ollama | all-MiniLM-L6-v2 | llama3.2:3b | $0 | Very Fast | Good | ✅ |
+
+**Testing:**
+
+```bash
+# Test each provider
+for model in openai anthropic local; do
+    echo "Testing $model..."
+    python src/rag_assessment_partial.py --model $model <<< "What is the PTO policy?"
+done
+
+# Compare results
+diff <(python src/rag_assessment_partial.py --model openai <<< "question") \
+     <(python src/rag_assessment_partial.py --model anthropic <<< "question")
+```
+
+**Note:** This enables the flexibility to switch between cloud and local models, supporting the full range from development (local) to production (OpenAI/Anthropic).
+
 ---
 
 ## Production Scalability Summary
